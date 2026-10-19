@@ -1,0 +1,24 @@
+{
+  "network": "testnet",
+  "networkPassphrase": "Test SDF Network ; September 2015",
+  "rpcUrl": "https://soroban-testnet.stellar.org",
+  "deployedAt": "2026-10-19",
+  "deployer": "GA7TXEBMEPQCLHIYCWDN7RKAO5IMRD2UV7O7TZXMEW6VZUMEXNR4XBB5",
+  "contracts": {
+    "liquifact_escrow": {
+      "contractId": "CDQCKR2YU6IVQ4GYPBMXBPZ4FGFQB5H25AI7ZSETHS2CZ5ZRCWQDSO6P",
+      "wasmSha256": "1d63d1cf51f0a0a87cce9ffa418d9084ea50df500054419873d6f2ba7f566b64",
+      "explorer": "https://stellar.expert/explorer/testnet/contract/CDQCKR2YU6IVQ4GYPBMXBPZ4FGFQB5H25AI7ZSETHS2CZ5ZRCWQDSO6P",
+      "initialized": {
+        "admin": "GA7TXEBMEPQCLHIYCWDN7RKAO5IMRD2UV7O7TZXMEW6VZUMEXNR4XBB5",
+        "invoice_id": "INV_0001",
+        "sme_address": "GA7TXEBMEPQCLHIYCWDN7RKAO5IMRD2UV7O7TZXMEW6VZUMEXNR4XBB5",
+        "amount": "1000000000",
+        "yield_bps": 800,
+        "maturity": 1800132005,
+        "funding_token": "CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC",
+        "treasury": "GA7TXEBMEPQCLHIYCWDN7RKAO5IMRD2UV7O7TZXMEW6VZUMEXNR4XBB5"
+      }
+    }
+  }
+}

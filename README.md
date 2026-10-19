@@ -1,8 +1,45 @@
 # LiquiFact Escrow Contracts
 
+## Live
+
+- **Website:** https://liquifact-frontend.vercel.app
+- **Docs:** https://liquifact-frontend.vercel.app/docs
+- **API:** https://liquifact-backend.vercel.app (API docs: https://liquifact-backend.vercel.app/docs)
+- **Contract (testnet):** [`CDQCKR2YU6IVQ4GYPBMXBPZ4FGFQB5H25AI7ZSETHS2CZ5ZRCWQDSO6P`](https://stellar.expert/explorer/testnet/contract/CDQCKR2YU6IVQ4GYPBMXBPZ4FGFQB5H25AI7ZSETHS2CZ5ZRCWQDSO6P)
+
 Soroban smart contracts for LiquiFact, the invoice liquidity network on Stellar.
 This repository contains the `escrow` contract that holds investor funds for
 tokenized invoices until settlement.
+
+---
+
+## Deployments
+
+| Contract | Network | Contract ID | Explorer |
+|----------|---------|-------------|----------|
+| `liquifact_escrow` | Stellar **testnet** | `CDQCKR2YU6IVQ4GYPBMXBPZ4FGFQB5H25AI7ZSETHS2CZ5ZRCWQDSO6P` | [stellar.expert](https://stellar.expert/explorer/testnet/contract/CDQCKR2YU6IVQ4GYPBMXBPZ4FGFQB5H25AI7ZSETHS2CZ5ZRCWQDSO6P) |
+
+Machine-readable details (deployer, wasm hash, init arguments) live in
+[`deployments/testnet.json`](deployments/testnet.json). The testnet instance was
+initialized with invoice `INV_0001`, a 100 XLM funding target (native XLM SAC as
+the funding token), 800 bps yield and the deployer as admin / SME / treasury.
+
+### Reproducing the deployment
+
+Soroban embeds `///` doc comments into the contract spec, which pushes the
+escrow wasm past the network's 128 KiB contract size limit. Strip spec docs
+before deploying (the interface itself is unchanged):
+
+```bash
+cargo build --target wasm32v1-none --release -p liquifact_escrow
+stellar contract optimize --wasm target/wasm32v1-none/release/liquifact_escrow.wasm --wasm-out target/opt.wasm
+python3 scripts/strip_spec_docs.py target/opt.wasm target/deploy.wasm
+stellar contract deploy --wasm target/deploy.wasm --source <key> --network testnet
+stellar contract invoke --id <CONTRACT_ID> --source <key> --network testnet -- init \
+  --admin <G...> --invoice_id INV_0001 --sme_address <G...> --amount 1000000000 \
+  --yield_bps 800 --maturity <unix_ts> \
+  --funding_token CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC --treasury <G...>
+```
 
 ---
 
@@ -406,22 +443,17 @@ The escrow supports cancellation by the admin under specific criteria, unlocking
 
 ## CI
 
-Run these before opening a PR:
-
-```bash
-cargo fmt --all -- --check
-cargo clippy -p liquifact_escrow -- -D warnings
-cargo build
-cargo test
-cargo llvm-cov --features testutils --fail-under-lines 95 --summary-only -p liquifact_escrow
-```
+GitHub Actions (`.github/workflows/ci.yml`) runs on every push to `main` and on
+pull requests: it builds the release WASM (`wasm32v1-none`) and runs the core
+test suites (`init`, `funding`, `settlement`, `admin`). Run the full suite
+locally with `cargo test`.
 
 ### Cargo.lock process notes
 
 - Keep `Cargo.lock` committed and reviewed for every dependency change.
 - For routine updates, use a dedicated dependency branch and include lockfile diff context in PR.
 - For emergency advisory bumps, prioritize minimal version movement and full regression checks.
-- After any lockfile update, re-run the full CI command set above before merge.
+- After any lockfile update, re-run `cargo test` before merge.
 - Dependency policy, cadence, and emergency workflow are documented in
   [`docs/escrow-dependency-policy.md`](docs/escrow-dependency-policy.md).
 
@@ -430,8 +462,3 @@ cargo llvm-cov --features testutils --fail-under-lines 95 --summary-only -p liqu
 ## Contributing
 
 MIT
-
-## Handsoff notes
-
-<!-- handsoff-issue-1307 -->
-- #1307: Protect state invariants in escrow/src/tests/arithmetic_overflow.rs

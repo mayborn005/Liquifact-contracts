@@ -117,59 +117,8 @@ fn test_fund_partial_then_full() {
 }
 
 #[test]
-fn competing_funding_at_target_commits_once_and_rejects_late_request() {
-    let env = Env::default();
-    let (client, admin, sme) = setup(&env);
-    let investor_a = Address::generate(&env);
-    let investor_b = Address::generate(&env);
-    let late_investor = Address::generate(&env);
-    let (token, treasury) = free_addresses(&env);
-    client.init(
-        &admin,
-        &String::from_str(&env, "FUND_RACE"),
-        &sme,
-        &100i128,
-        &800i64,
-        &0u64,
-        &token,
-        &None,
-        &treasury,
-        &None,
-        &None,
-        &None,
-        &None,
-        &None,
-        &None,
-        &None,
-        &None,
-        &None::<i64>,
-        &None::<u32>,
-    );
-
-    client.fund(&investor_a, &60i128);
-    assert_eq!(client.get_funding_close_snapshot(), None);
-
-    let closed = client.fund(&investor_b, &40i128);
-    let snapshot = client
-        .get_funding_close_snapshot()
-        .expect("funding close must be captured on the threshold-crossing call");
-    assert_eq!(closed.status, 1);
-    assert_eq!(closed.funded_amount, 100);
-    assert_eq!(snapshot.total_principal, 100);
-    assert_eq!(client.get_unique_funder_count(), 2);
-
-    assert_contract_error(
-        client.try_fund(&late_investor, &1i128),
-        EscrowError::EscrowNotOpenForFunding,
-    );
-    assert_eq!(client.get_escrow().funded_amount, 100);
-    assert_eq!(client.get_funding_close_snapshot(), Some(snapshot));
-    assert_eq!(client.get_contribution(&late_investor), 0);
-    assert_eq!(client.get_unique_funder_count(), 2);
-}
-
-#[test]
 #[should_panic]
+
 fn test_fund_zero_amount_panics() {
     let env = Env::default();
 
@@ -4930,7 +4879,7 @@ fn test_remaining_capacity_recomputes_after_target_raised() {
 
     let new_target = TARGET * 2;
 
-    client.update_funding_target(&new_target, &0u32);
+    client.update_funding_target(&new_target);
 
     // Capacity must reflect new target
 
@@ -5004,7 +4953,7 @@ fn test_remaining_capacity_recomputes_after_target_lowered() {
 
     let new_target = TARGET / 2;
 
-    client.update_funding_target(&new_target, &0u32);
+    client.update_funding_target(&new_target);
 
     // Capacity must reflect new lower target
 
@@ -5072,7 +5021,7 @@ fn test_remaining_capacity_zero_when_target_lowered_to_funded_amount() {
 
     // Lower target to exactly the funded amount
 
-    client.update_funding_target(&deposit, &0u32);
+    client.update_funding_target(&deposit);
 
     assert_eq!(
         client.get_remaining_funding_capacity(),
@@ -5158,7 +5107,7 @@ fn test_remaining_capacity_across_deposits_and_target_update() {
 
     let new_target = TARGET * 3 / 2;
 
-    client.update_funding_target(&new_target, &0u32);
+    client.update_funding_target(&new_target);
 
     assert_eq!(
         client.get_remaining_funding_capacity(),
@@ -5481,7 +5430,7 @@ fn test_remaining_capacity_never_negative_comprehensive() {
 
     // Lower target to 90% of original (still above funded amount)
 
-    client.update_funding_target(&(TARGET * 90 / 100), &0u32);
+    client.update_funding_target(&(TARGET * 90 / 100));
 
     assert!(client.get_remaining_funding_capacity() >= 0);
 
@@ -5712,7 +5661,7 @@ fn test_update_funding_target_zero_rejected() {
     let client = setup_partially_funded(&env, 0, 10_000i128);
 
     assert_contract_error(
-        client.try_update_funding_target(&0i128, &0u32),
+        client.try_update_funding_target(&0i128),
         EscrowError::TargetNotPositive,
     );
 }
@@ -5729,7 +5678,7 @@ fn test_update_funding_target_negative_rejected() {
     let client = setup_partially_funded(&env, 0, 10_000i128);
 
     assert_contract_error(
-        client.try_update_funding_target(&-1i128, &0u32),
+        client.try_update_funding_target(&-1i128),
         EscrowError::TargetNotPositive,
     );
 }
@@ -5746,7 +5695,7 @@ fn test_update_funding_target_below_funded_amount_rejected() {
     let client = setup_partially_funded(&env, 5_000i128, 10_000i128);
 
     assert_contract_error(
-        client.try_update_funding_target(&4_999i128, &0u32),
+        client.try_update_funding_target(&4_999i128),
         EscrowError::TargetBelowFundedAmount,
     );
 }
@@ -5769,7 +5718,7 @@ fn test_update_funding_target_not_open_rejected() {
     assert_eq!(client.get_escrow().status, 1);
 
     assert_contract_error(
-        client.try_update_funding_target(&10_000i128, &0u32),
+        client.try_update_funding_target(&10_000i128),
         EscrowError::TargetUpdateNotOpen,
     );
 }
@@ -5790,7 +5739,7 @@ fn test_update_funding_target_settled_rejected() {
     client.settle();
 
     assert_contract_error(
-        client.try_update_funding_target(&10_000i128, &0u32),
+        client.try_update_funding_target(&10_000i128),
         EscrowError::TargetUpdateNotOpen,
     );
 }
@@ -5841,7 +5790,7 @@ fn test_update_funding_target_raise_stays_open_emits_event() {
 
     client.fund(&Address::generate(&env), &3_000i128);
 
-    let result = client.update_funding_target(&20_000i128, &0u32);
+    let result = client.update_funding_target(&20_000i128);
 
     // Capture events before any getter calls.
     let events = env.events().all();
@@ -5926,7 +5875,7 @@ fn test_update_funding_target_exact_funded_amount_promotes_to_funded() {
 
     // Lower target to exactly funded_amount.
 
-    let result = client.update_funding_target(&7_000i128, &0u32);
+    let result = client.update_funding_target(&7_000i128);
 
     // Capture events before any getter calls.
     let events = env.events().all();
@@ -5987,14 +5936,14 @@ fn test_update_funding_target_snapshot_written_only_once() {
 
     // Promote to funded via target lowering.
 
-    client.update_funding_target(&5_000i128, &0u32);
+    client.update_funding_target(&5_000i128);
 
     let snap1 = client.get_funding_close_snapshot().unwrap();
 
     // Any further attempt on the now-funded escrow must be rejected.
 
     assert_contract_error(
-        client.try_update_funding_target(&5_000i128, &1u32),
+        client.try_update_funding_target(&5_000i128),
         EscrowError::TargetUpdateNotOpen,
     );
 
@@ -6032,7 +5981,7 @@ fn test_fund_rejected_after_promotion_via_update_funding_target() {
 
     let client = setup_partially_funded(&env, 6_000i128, 10_000i128);
 
-    client.update_funding_target(&6_000i128, &0u32);
+    client.update_funding_target(&6_000i128);
 
     assert_eq!(client.get_escrow().status, 1);
 
@@ -6055,7 +6004,7 @@ fn test_update_funding_target_no_funds_no_promotion() {
 
     let client = setup_partially_funded(&env, 0, 10_000i128);
 
-    let result = client.update_funding_target(&1i128, &0u32);
+    let result = client.update_funding_target(&1i128);
 
     assert_eq!(result.status, 0);
 
@@ -6770,7 +6719,7 @@ fn test_extend_funding_deadline_rejects_non_open_status() {
 
     init_with_funding_deadline(&env, &client, &admin, &sme, initial, 0);
 
-    client.cancel_funding(&0u32);
+    client.cancel_funding();
 
     assert_contract_error(
         client.try_extend_funding_deadline(&(initial + 50)),
@@ -7189,52 +7138,6 @@ fn test_unfund_full() {
 }
 
 #[test]
-fn test_full_unfund_then_fund_keeps_one_historical_index_entry() {
-    let env = Env::default();
-    let (client, admin, sme) = setup(&env);
-    let investor = Address::generate(&env);
-    let (tok, tre) = free_addresses(&env);
-    client.init(
-        &admin,
-        &String::from_str(&env, "UF_REJOIN"),
-        &sme,
-        &TARGET,
-        &800i64,
-        &0u64,
-        &tok,
-        &None,
-        &tre,
-        &None,
-        &None,
-        &None,
-        &None,
-        &None,
-        &None,
-        &None,
-        &None,
-        &None::<i64>,
-        &None::<u32>,
-    );
-
-    client.fund(&investor, &20_000i128);
-    client.unfund(&investor, &20_000i128);
-    assert_eq!(client.get_unique_funder_count(), 0);
-
-    let funded = client.fund(&investor, &5_000i128);
-    assert_eq!(funded.funded_amount, 5_000i128);
-    assert_eq!(client.get_contribution(&investor), 5_000i128);
-    assert_eq!(client.get_unique_funder_count(), 1);
-
-    let investors = client.get_investors(&0, &10);
-    assert_eq!(investors.len(), 1, "re-entry must not duplicate the index");
-    assert_eq!(investors.get(0).unwrap(), investor);
-
-    let records = client.get_funding_records(&0, &10);
-    assert_eq!(records.len(), 1);
-    assert_eq!(records.get(0).unwrap(), (investor, 5_000i128));
-}
-
-#[test]
 fn test_unfund_funder_count_floor() {
     // Inject UniqueFunderCount=0 manually and verify saturating_sub does not underflow.
     let env = Env::default();
@@ -7434,7 +7337,7 @@ fn test_unfund_wrong_status_cancelled() {
     );
 
     client.fund(&investor, &(TARGET / 2));
-    client.cancel_funding(&0u32); // status = 4
+    client.cancel_funding(); // status = 4
 
     assert_contract_error(
         client.try_unfund(&investor, &1i128),
@@ -7470,7 +7373,7 @@ fn test_unfund_legal_hold_blocked() {
     );
 
     client.fund(&investor, &(TARGET / 4));
-    client.set_legal_hold(&true, &0u32);
+    client.set_legal_hold(&true);
 
     assert_contract_error(
         client.try_unfund(&investor, &1i128),

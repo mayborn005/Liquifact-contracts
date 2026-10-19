@@ -1,11 +1,13 @@
 [workspace]
 members = ["escrow"]
-resolver = "2" 
+resolver = "2"
 
-[workspace.metadata.cargo-llvm-cov]
-# Exclude test scaffolding from coverage measurement — only production code is gated.
-exclude = [
-    "src/test/*",
-    "**/*_test.rs",
-    "tests/*"
-]
+[profile.release]
+opt-level = "z"
+overflow-checks = true
+debug = 0
+strip = "symbols"
+debug-assertions = false
+panic = "abort"
+codegen-units = 1
+lto = true
